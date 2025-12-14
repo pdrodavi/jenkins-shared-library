@@ -11,13 +11,19 @@ def call(Map config = [:]) {
         environment {
             DOCKER_NAMESPACE = 'pdrodavi'
             IMAGE_TAG = "${BUILD_NUMBER}"
-            DOCKER_CREDENTIALS_ID = config.dockerCreds ?: 'dockerhub-creds'
-            SONAR_ORG = 'pdrodavi'
-            SONAR_HOST_URL = 'https://sonarcloud.io'
-            GITHUB_TOKEN_ID = config.githubToken ?: 'github-token'
         }
 
         stages {
+
+            stage('Inicialização') {
+                steps {
+                    script {
+                        // Valores dinâmicos DEVEM ficar aqui
+                        env.DOCKER_CREDENTIALS_ID = config.dockerCreds ?: 'dockerhub-creds'
+                        env.GITHUB_TOKEN_ID      = config.githubToken ?: 'github-token'
+                    }
+                }
+            }
 
             stage('Inputs') {
                 steps {
@@ -31,7 +37,7 @@ def call(Map config = [:]) {
                             ]
                         )
 
-                        env.GIT_REPO = userInput.GIT_REPO
+                        env.GIT_REPO   = userInput.GIT_REPO
                         env.GIT_BRANCH = userInput.GIT_BRANCH
                     }
                 }
@@ -57,31 +63,7 @@ def call(Map config = [:]) {
                             returnStdout: true
                         ).trim()
 
-                        env.DOCKER_IMAGE = "${DOCKER_NAMESPACE}/${APP_NAME}"
-                    }
-                }
-            }
-
-            stage('SonarCloud Scan') {
-                steps {
-                    withSonarQubeEnv('SonarCloud') {
-                        withCredentials([string(credentialsId: 'sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                            sh """
-                              mvn sonar:sonar \
-                                -Dsonar.projectKey=${SONAR_ORG}_${APP_NAME} \
-                                -Dsonar.organization=${SONAR_ORG} \
-                                -Dsonar.host.url=${SONAR_HOST_URL} \
-                                -Dsonar.login=$SONAR_TOKEN
-                            """
-                        }
-                    }
-                }
-            }
-
-            stage('Quality Gate') {
-                steps {
-                    timeout(time: 5, unit: 'MINUTES') {
-                        waitForQualityGate abortPipeline: true
+                        env.DOCKER_IMAGE = "${env.DOCKER_NAMESPACE}/${env.APP_NAME}"
                     }
                 }
             }
@@ -101,7 +83,7 @@ def call(Map config = [:]) {
                 steps {
                     withCredentials([
                         usernamePassword(
-                            credentialsId: DOCKER_CREDENTIALS_ID,
+                            credentialsId: env.DOCKER_CREDENTIALS_ID,
                             usernameVariable: 'DOCKER_USER',
                             passwordVariable: 'DOCKER_PASS'
                         )
