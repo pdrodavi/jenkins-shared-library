@@ -51,7 +51,7 @@ def call(Map config = [:]) {
 
             stage('Build Maven') {
                 steps {
-                    sh 'mvn clean verify -DskipTests'
+                    sh 'mvn clean package -DskipTests'
                 }
             }
 
